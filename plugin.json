@@ -1,0 +1,10 @@
+{
+	"id": "SbcPowerButton",
+	"name": "SBC Power Button",
+	"author": "DonEste",
+	"version": "0.1.0",
+	"license": "GPL-3.0-or-later",
+	"homepage": "https://github.com/DonEste/SbcPowerButton",
+	"dwcVersion": "3.7.0",
+	"tags": ["sbc", "raspberry-pi", "power", "shutdown", "reboot"]
+}
