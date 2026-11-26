@@ -3,80 +3,64 @@
 // DWC 3.7 has no plugin API for the app bar, so this entry point places a small host element
 // into the bar (just left of the emergency stop) and renders PowerButton into it with the root
 // app's context, which gives the component DWC's Vuetify, Pinia stores and i18n. A
-// MutationObserver puts the host back if DWC re-renders the bar (layout switch, reconnect).
+// MutationObserver puts the host back if DWC re-renders the bar (layout switch, reconnect) or
+// re-adds the emergency stop next to it.
 
-import { h, render, type AppContext } from "vue";
+import { h, render, type App } from "vue";
 
 import Events from "@/utils/events";
 
 import PowerButton from "./PowerButton.vue";
 
 const PLUGIN_ID = "SbcPowerButton";
-const HOST_ID = "sbc-power-button-host";
 const BAR_SELECTOR = ".v-app-bar .v-toolbar__content";
 
 let host: HTMLElement | null = null;
 let observer: MutationObserver | null = null;
-let scheduled = false;
 
-/** DWC's root app context, set by Vue on the mount container (also in production builds) */
-function getAppContext(): AppContext | null {
-	const container = document.querySelector("#app") as (Element & { __vue_app__?: { _context: AppContext } }) | null;
-	return container?.__vue_app__?._context ?? null;
-}
+function createHost(): HTMLElement | null {
+	// Vue stores the mounted app on its container (also in production builds); this is not a
+	// documented DWC API, so fail closed (no button) if it ever disappears
+	const app = (document.querySelector("#app") as (Element & { __vue_app__?: App }) | null)?.__vue_app__;
+	if (!app) {
+		console.warn(`[${PLUGIN_ID}] DWC app not found; the power button cannot be shown`);
+		return null;
+	}
 
-function createHost(context: AppContext): HTMLElement {
 	const element = document.createElement("div");
-	element.id = HOST_ID;
-	element.className = "d-flex align-center ms-3";
-
+	element.className = "d-flex align-center";
 	const vnode = h(PowerButton);
-	vnode.appContext = context;
+	vnode.appContext = app._context;
 	render(vnode, element);
 	return element;
 }
 
-/** Place the host in the app bar, before the emergency stop if it is shown */
+/** Keep the host in the app bar, directly before the emergency stop if that is shown */
 function attach() {
-	scheduled = false;
+	// Cheap path for the common case: nothing to do
+	const parent = host?.parentElement;
+	if (host && parent?.matches(BAR_SELECTOR)) {
+		const estop = parent.querySelector(":scope > .estop-button");
+		if (!estop || host.nextElementSibling === estop) {
+			return;
+		}
+	}
 
 	const bar = document.querySelector(BAR_SELECTOR);
 	if (!bar) {
 		return;
 	}
-	if (host && host.parentElement === bar) {
-		return;
-	}
-
-	if (!host) {
-		const context = getAppContext();
-		if (!context) {
-			console.warn(`[${PLUGIN_ID}] DWC app context not found; the power button cannot be shown`);
-			return;
-		}
-		host = createHost(context);
-	}
-
-	const estop = bar.querySelector(":scope > .estop-button");
-	bar.insertBefore(host, estop);
-}
-
-function scheduleAttach() {
-	if (!scheduled) {
-		scheduled = true;
-		requestAnimationFrame(attach);
+	host ??= createHost();
+	if (host) {
+		bar.insertBefore(host, bar.querySelector(":scope > .estop-button"));
 	}
 }
 
-attach();
-observer = new MutationObserver(scheduleAttach);
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Clean up when the plugin is stopped from Settings -> Plugins
-Events.on("dwcPluginUnloaded", (id) => {
+function onUnloaded(id: string) {
 	if (id !== PLUGIN_ID) {
 		return;
 	}
+	Events.off("dwcPluginUnloaded", onUnloaded);
 	observer?.disconnect();
 	observer = null;
 	if (host) {
@@ -84,4 +68,11 @@ Events.on("dwcPluginUnloaded", (id) => {
 		host.remove();
 		host = null;
 	}
-});
+}
+
+attach();
+// MutationObserver batches all changes of a task into one callback, and attach() returns early
+// when nothing changed, so no extra throttling is needed
+observer = new MutationObserver(attach);
+observer.observe(document.querySelector("#app") ?? document.body, { childList: true, subtree: true });
+Events.on("dwcPluginUnloaded", onUnloaded);

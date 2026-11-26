@@ -28,7 +28,7 @@ In `src/pages/Settings/[[tab]].vue` (Settings → About):
 
 ## 3. Verified on the live printer (read-only, 2026-11-25)
 
-Checked in the browser against http://192.168.1.104 (DWC 3.7.0):
+Checked in the browser against a live DWC 3.7.0 instance:
 
 - `window.DWC` exists (116 keys) and includes `useMachineStore`, `useUiStore`, `showConfirmDialog`, `Enums.isPrinting`, `Events`, `Vue`, `VuetifyComponents`.
 - `useMachineStore().isDuetPiManagementPluginRunning` → `true`; `.sendCode`, `.request`, `.isConnected` present.
@@ -51,7 +51,7 @@ Checked in the browser against http://192.168.1.104 (DWC 3.7.0):
 From `PLUGINS.md` (v3.7.0):
 
 - Standalone repo layout: `plugin.json` + `src/index.ts` + `.vue` components + optional `src/i18n/*.json`.
-- Building needs a DWC checkout at the **matching tag** (`v3.7.0`), `npm install` there, then from inside it:
+- Building needs a DWC checkout at the **matching tag** (`v3.7.0`), `npm ci` there, then from inside it:
   - `node scripts/build-plugin.js /path/to/SbcPowerButton` – simple build;
   - `node scripts/build-plugin-pkg.js /path/to/SbcPowerButton` – also fills `dwcFiles` in the manifest (use for releases).
 - Output: `SbcPowerButton-<version>.zip` (plus a `-srcmap.zip` for stable versions). Imports from `"DuetWebControl"`, `vue`, `vuetify` are externalised to `window.DWC` at runtime.
@@ -76,3 +76,7 @@ From `PLUGINS.md` (v3.7.0):
 1. Does the plugin's web file survive a `duetwebcontrol` package update? Test on the next DWC update.
 2. Where exactly to place the button on narrow screens (the bar hides the code input below `md`).
 3. Should "Close browser" (kiosk) be included? The kiosk autostart is disabled on this printer.
+
+## 9. Version matching
+
+DWC's `checkVersion` (`src/plugins/index.ts`) compares version parts only up to the shorter of the two strings. `dwcVersion: "3.7.0"` therefore matches only DWC 3.7.0 exactly, while `"3.7"` matches every 3.7.x release. The plugin uses `"3.7"` from version 0.2.0.
