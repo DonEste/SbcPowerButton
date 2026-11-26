@@ -4,7 +4,11 @@ A Duet Web Control (DWC) 3.7 plugin that adds a power button to the top app bar 
 
 It reuses what DWC already does under **Settings → About**: it sends `M999 B-1` (reboot) or `M999 B-1 P"OFF"` (shutdown), which the DuetPi Management Plugin turns into a reboot or power-off. Every action asks for confirmation, and the button is disabled while printing, while the UI is busy, or when the DuetPi Management Plugin is not running.
 
-**Status:** research done, plugin not built yet. See [docs/RESEARCH.md](docs/RESEARCH.md).
+**Status:** version 0.1.0 builds against DWC 3.7.0 and was tested by loading the bundle into a live DWC 3.7.0 page (button, menu and confirmation dialog). Not yet tested as an installed plugin. See [docs/RESEARCH.md](docs/RESEARCH.md) for how it works and why.
+
+## How it works
+
+DWC 3.7 has no plugin API for the top bar, so the plugin places a small host element into the bar (just left of the emergency stop) and renders its Vue component there with DWC's own app context, so it uses DWC's styling, stores, translations and confirmation dialog. If DWC redraws the bar, the plugin puts the button back. Stopping the plugin removes it.
 
 ## Requirements
 
